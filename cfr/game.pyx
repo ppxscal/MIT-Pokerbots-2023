@@ -1,42 +1,47 @@
 import cython
+import numpy as np
 
-cdef class Game():
+class Game:
 
-    cpdef beginGame():
+    def __init__(self):
+        pass
+    
+    def beginGame(self):
         '''Start a new game'''
-        return 0
+        pass
     
-    cpdef makeMove(int move):
+    def makeMove(self):
         '''Make a move'''
-        return 0
+        pass
     
-    cpdef getPayouts():
-        '''Returns a vector with payouts for the ith player'''
-        return 0
+    def getPayout(self):
+        '''Get the payout'''
+        pass
     
-    cpdef deepCopy():
-        '''Returns a deep copy of the game'''
-        return 0 
+    def deepCopy(self):
+        '''Return a deep copy of the game'''
+        pass
     
-    cpdef infoSet():
-        '''Returns the information set of the current player'''
-        return 0
+    def infoSet(self):
+        '''Return the information set'''
+        pass
     
-    cpdef isTerminal():
-        '''Returns true if the game is over'''
-        return 0
+    def isTerminal(self):
+        '''Return True if the game is over'''
+        pass
     
-    cpdef getNumPlayers():
-        '''Returns the number of players'''
-        return 0
+    def numPlayer(self):
+        '''Return the number of players'''
+        pass
     
-    cpdef playerToAct():
-        '''Returns the player to act 0 based indexing'''
-        return 0
+    def playerToAct(self):
+        '''Return the player to act'''
+        pass
     
-    cpdef actions():
-        '''Returns a vector of actions available to the current player'''
-        return 0
+    def actions(self):
+        '''Return the actions available to the player to act'''
+        pass
+
 
     
 
