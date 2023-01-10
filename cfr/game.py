@@ -12,6 +12,7 @@ class Game:
     def getPayout():
         '''Return a payout vector for a finished game'''
     
+    
     def getInfoSet():
         '''Returns the information set hash for the current player'''
         pass
