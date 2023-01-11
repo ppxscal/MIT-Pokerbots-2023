@@ -13,9 +13,10 @@ class bloodRiver(Game):
         self.dealer = 0
         self.winner = -1
         self.isTerminal = False
-        self.player0Cards = deck.deal(2)
-        self.player1Cards = deck.deal(2)
-        self.board = deck.deal(3)
+        self.player0Cards = self.deck.deal(2)
+        self.player1Cards = self.deck.deal(2)
+        self.cards = [self.player0Cards, self.player1Cards]
+        self.board = self.deck.deal(3)
         self.street = 0
         self.firstBet = True
     
@@ -31,7 +32,16 @@ class bloodRiver(Game):
         self.street +=1
 
     def infoSet(self):
-        pass    
+        '''Returns the information set hash for the current player. It is all the availble information for that player'''
+        #TODO
+        player
+
+        return frozenset({'Player:' : self.currentPlayer, 
+                'dealer:' : self.dealer,
+                'History:' : self.history, 
+                'Cards:' : self.cards[self.currentPlayer],
+                'Actions:' : self.getActions(),
+                'street': self.street})    
         
     def getActions(self):
         '''Returns a set of all possible actions for the current player'''
@@ -122,15 +132,11 @@ class bloodRiver(Game):
             self.firstBet = False
             self.history.append('BET ' + str(value))
 
-        
-
-
-
     def getPayout(self):
-        pass    
+        '''Returns the payout for the current player'''
+        if not self.isTerminal:
+            raise Exception('Game is not terminal')
+        return self.stack[self.winner] + sum(self.pot)
 
-    
-
-    
 
 game = bloodRiver()
