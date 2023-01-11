@@ -1,5 +1,6 @@
 from game import Game
 import eval7
+from types import MappingProxyType
 
 class bloodRiver(Game):
     
@@ -8,7 +9,7 @@ class bloodRiver(Game):
         self.deck.shuffle()
         self.history = []
         self.stack = [400,400]
-        self.pot = []
+        self.pot = [0,0]
         self.currentPlayer = 0
         self.dealer = 0
         self.winner = -1
@@ -26,8 +27,9 @@ class bloodRiver(Game):
         self.dealer = dealer
         self.stack[self.dealer] -= 1
         self.stack[1-self.dealer] -= 2
-        self.pot += 3
-        self.history.append('BLIND')
+        self.pot[self.dealer] += 1
+        self.pot[1-self.dealer] += 2
+        self.history.append('BLIND', -1)
         self.currentPlayer = 1-self.dealer
         self.street +=1
 
@@ -36,7 +38,7 @@ class bloodRiver(Game):
         #TODO
         player
 
-        return frozenset({'Player:' : self.currentPlayer, 
+        return MappingProxyType({'Player:' : self.currentPlayer, 
                 'dealer:' : self.dealer,
                 'History:' : self.history, 
                 'Cards:' : self.cards[self.currentPlayer],
@@ -71,7 +73,7 @@ class bloodRiver(Game):
         self.winner = 0 if player0HS > player1HS else 1
         return self.winner
 
-    def makeMove(self, action, value=0):
+    def makeMove(self, action):
         '''Updates the game state based on the action taken'''
 
         if self.isTerminal:
@@ -93,15 +95,15 @@ class bloodRiver(Game):
         if action == 'FOLD':
             self.isTerminal = True
             self.winner = 1-self.currentPlayer
-            self.history.append('FOLD')
+            self.history.append(('FOLD', -1))
             return
         
         if action == 'CHECK':
             self.currentPlayer = 1-self.currentPlayer     
-            self.history.append('CHECK')
-            if self.history[-1] == 'CHECK':
+            if self.history[-1][0] == 'CHECK':
                 self.firstBet = True
                 self.winner = self.getWinner()
+            self.history.append('CHECK', -1)
             return
         
         if action == 'CALL':
@@ -111,22 +113,34 @@ class bloodRiver(Game):
             self.firstBet = True
             if not(self.street == 1 and self.currentPlayer == self.dealer and len(self.history) == 0):
                 self.street += 1
+            self.history.append('CALL', -1)
             return
         
         if action == 'RAISE':
             if self.history[-1] != 'BET' and self.history[-1] != 'RAISE':
                 raise Exception('Not allowed to Raise')
-            self.stack[self.currentPlayer] -= value
-            self.pot[self.currentPlayer] += value
+            
+            minRaise = 0
+            maxRaise = 0
+
+            #if responding to a bet or raise
+            if self.history[-1][0] in {'BET', 'RAISE'}:
+                if action[1] <= self.history[-1][1]:
+                    if self.history[-1][1] > self.stack[self.currentPlayer]:
+                        print('The only raise should be all in')
+                        action = ('RAISE', self.stack[self.currentPlayer])
+                    raise Exception('Raise must be larger than previous bet or raise')
+
+            self.stack[self.currentPlayer] -= action[1]
+            self.pot[self.currentPlayer] += action[1]
             self.currentPlayer = 1-self.currentPlayer
             self.firstBet = False
-            self.history.append('RAISE ' + str(value))
+            self.history.append('RAISE ' + str(action[1]))
             return
         
         if action == 'BET':
             if value < 2:
                 raise Exception('Minimum bet is 2')
-        
             self.stack[self.currentPlayer] -= value
             self.pot[self.currentPlayer] += value
             self.firstBet = False
