@@ -17,11 +17,11 @@ class bloodRiver(Game):
         self.player0Cards = self.deck.deal(2)
         self.player1Cards = self.deck.deal(2)
         self.cards = [self.player0Cards, self.player1Cards]
-        self.board = self.deck.deal(3)
+        self.board = self.deck.deal(5)
         self.street = 0
-        self.firstBet = True
+        self.firstMove = True
     
-    def beginGame(dealer):
+    def beginGame(self, dealer):
         '''Start the game'''
         #play blinds
         self.dealer = dealer
@@ -29,41 +29,52 @@ class bloodRiver(Game):
         self.stack[1-self.dealer] -= 2
         self.pot[self.dealer] += 1
         self.pot[1-self.dealer] += 2
-        self.history.append('BLIND', -1)
-        self.currentPlayer = 1-self.dealer
+        self.history.append(('BLIND', -1))
         self.street +=1
 
     def infoSet(self):
         '''Returns the information set hash for the current player. It is all the availble information for that player'''
-        #TODO
-        player
 
-        return MappingProxyType({'Player:' : self.currentPlayer, 
-                'dealer:' : self.dealer,
-                'History:' : self.history, 
-                'Cards:' : self.cards[self.currentPlayer],
-                'Actions:' : self.getActions(),
-                'street': self.street})    
+        infoset = MappingProxyType({'player' : self.currentPlayer, 
+                'dealer' : self.dealer,
+                'history' : self.history, 
+                'cards' : self.cards[self.currentPlayer],
+                'actions' : self.getActions(),
+                'street': self.street,
+                'terminal': self.isTerminal})
+        print(infoset, '\n')
+        return infoset
         
     def getActions(self):
         '''Returns a set of all possible actions for the current player'''
         #Make sure logic is correct TODO
 
+        if self.isTerminal:
+            return({})
+
         if self.street == 0: return frozenset({'BLIND'})
 
-        if self.firstBet:
-            if self.street == 1 and self.currentPlayer == self.dealer:
-                return frozenset({'FOLD', 'CALL', 'RAISE'})
-            if self.street > 1 and self.currentPlayer != self.dealer:
-                return frozenset({'CHECK', "BET"})
-        
-        if self.street == 1 and self.history[-1] == 'CALL' and self.currentPlayer == self.dealer:
-            return frozenset({'CHECK', 'RAISE'})
+        if self.street <= 5:
+            if self.firstMove:
+                if self.street == 1 and self.currentPlayer == self.dealer:
+                    return frozenset({'FOLD', 'CALL', 'RAISE'})
+                if self.street > 1 and self.currentPlayer != self.dealer:
+                    return frozenset({'CHECK', "BET"})
+            
+            if self.street == 1 and self.history[-1] == 'CALL' and self.currentPlayer == self.dealer:
+                return frozenset({'CHECK', 'RAISE'})
 
-        if self.history[-1] in {'BET', 'RAISE'}:
-            return frozenset({'CHECK', 'BET', 'RAISE', 'CALL', 'FOLD'})
+            if self.history[-1][0] in {'BET', 'RAISE'}:
+                return frozenset({'CHECK', 'RAISE', 'CALL', 'FOLD'})
+            
+            print('googoogaga', self.history[-1])
         
-        return frozenset({'CALL', 'BET', 'FOLD', 'CHECK'})
+            return frozenset({'BET', 'FOLD', 'CHECK'})
+        else:
+            self.isTerminal = True
+            #the expected number of additional rounds after the river is 1 we can handle the other cases manually
+            print('Game is terminal after 5 streets')
+            return frozenset({})
         
 
     def getWinner(self):
@@ -79,49 +90,41 @@ class bloodRiver(Game):
         if self.isTerminal:
             raise Exception('Game is already terminal')
         
-        #the expected number of additional rounds after the river is 1 we can handle the other cases manually
-
-        if self.street > 5:
-            self.isTerminal = True
-            print('Game is terminal after 5 streets')
-        
         actions = self.getActions()
 
-        if action not in actions:
-            raise Exception('Invalid action')
+        if action[0] not in actions:
+            raise Exception('Invalid action', action, actions)
         
-        self.street += 1
+        print('Making move: ', action, '\n')
 
-        if action == 'FOLD':
+        if action[0] == 'FOLD':
             self.isTerminal = True
             self.winner = 1-self.currentPlayer
             self.history.append(('FOLD', -1))
-            return
         
-        if action == 'CHECK':
+        elif action[0] == 'CHECK':
             self.currentPlayer = 1-self.currentPlayer     
-            if self.history[-1][0] == 'CHECK':
-                self.firstBet = True
-                self.winner = self.getWinner()
-            self.history.append('CHECK', -1)
-            return
+            if self.history[-1][0] == 'CHECK' and not self.firstMove:
+                self.firstMove = True
+                self.street += 1
+                self.history.append(('CHECK', -1))
+                return
+            self.history.append(('CHECK', -1))
         
-        if action == 'CALL':
-            callValue = abs(pot[0]-pot[1])
+        elif action[0] == 'CALL':
+            callValue = abs(self.pot[0]-self.pot[1])
             self.stack[self.currentPlayer] -= callValue
             self.pot[self.currentPlayer] += callValue
-            self.firstBet = True
+            self.firstMove = True
+            self.currentPlayer = 1-self.dealer
             if not(self.street == 1 and self.currentPlayer == self.dealer and len(self.history) == 0):
                 self.street += 1
-            self.history.append('CALL', -1)
+            self.history.append(('CALL', -1))
             return
         
-        if action == 'RAISE':
+        elif action[0] == 'RAISE':
             if self.history[-1] != 'BET' and self.history[-1] != 'RAISE':
                 raise Exception('Not allowed to Raise')
-            
-            minRaise = 0
-            maxRaise = 0
 
             #if responding to a bet or raise
             if self.history[-1][0] in {'BET', 'RAISE'}:
@@ -130,27 +133,52 @@ class bloodRiver(Game):
                         print('The only raise should be all in')
                         action = ('RAISE', self.stack[self.currentPlayer])
                     raise Exception('Raise must be larger than previous bet or raise')
+            
+            deficit = abs(self.pot[0]-self.pot[1])
+            contribAmt = deficit + action[1]
 
-            self.stack[self.currentPlayer] -= action[1]
-            self.pot[self.currentPlayer] += action[1]
+            self.stack[self.currentPlayer] -= contribAmt
+            self.pot[self.currentPlayer] += contribAmt
             self.currentPlayer = 1-self.currentPlayer
-            self.firstBet = False
-            self.history.append('RAISE ' + str(action[1]))
+            self.history.append(('RAISE ', action[1]))
             return
         
-        if action == 'BET':
-            if value < 2:
+        elif action[0] == 'BET':
+            if action[1] < 2:
                 raise Exception('Minimum bet is 2')
-            self.stack[self.currentPlayer] -= value
-            self.pot[self.currentPlayer] += value
-            self.firstBet = False
-            self.history.append('BET ' + str(value))
+            if action[1] > max(self.stack):
+                raise Exception('Cannot bet more than stack')
+            self.stack[self.currentPlayer] -= action[1]
+            self.pot[self.currentPlayer] += action[1]
+            self.history.append(('BET', action[1]))
+        
+        if self.firstMove: self.firstMove = False
 
     def getPayout(self):
-        '''Returns the payout for the current player'''
+        '''Returns the payout for the winner'''
         if not self.isTerminal:
             raise Exception('Game is not terminal')
-        return self.stack[self.winner] + sum(self.pot)
+        return sum(self.pot)
 
 
 game = bloodRiver()
+game.beginGame(0)
+game.infoSet()
+game.makeMove(('CALL', -1))
+game.infoSet()
+game.makeMove(('CHECK', -1))
+game.infoSet()
+game.makeMove(('CHECK', -1))
+game.infoSet()
+game.makeMove(('CHECK', -1))
+game.infoSet()
+game.makeMove(('BET', 200))
+game.infoSet()
+game.makeMove(('CALL', -1))
+game.infoSet()
+game.makeMove(('CHECK', -1))
+game.infoSet()
+game.makeMove(('FOLD', -1))
+game.infoSet()
+print(game.getPayout())
+
