@@ -41,7 +41,10 @@ class bloodRiver(Game):
                 'cards' : self.cards[self.currentPlayer],
                 'actions' : self.getActions(),
                 'street': self.street,
-                'terminal': self.isTerminal})
+                'terminal': self.isTerminal,
+                'pot': self.pot,
+                'stack': self.stack,}
+                )
         print(infoset, '\n')
         return infoset
         
@@ -66,8 +69,6 @@ class bloodRiver(Game):
 
             if self.history[-1][0] in {'BET', 'RAISE'}:
                 return frozenset({'CHECK', 'RAISE', 'CALL', 'FOLD'})
-            
-            print('googoogaga', self.history[-1])
         
             return frozenset({'BET', 'FOLD', 'CHECK'})
         else:
@@ -123,7 +124,7 @@ class bloodRiver(Game):
             return
         
         elif action[0] == 'RAISE':
-            if self.history[-1] != 'BET' and self.history[-1] != 'RAISE':
+            if self.history[-1][0] != 'BET' and self.history[-1][0] != 'RAISE':
                 raise Exception('Not allowed to Raise')
 
             #if responding to a bet or raise
@@ -132,8 +133,11 @@ class bloodRiver(Game):
                     if self.history[-1][1] > self.stack[self.currentPlayer]:
                         print('The only raise should be all in')
                         action = ('RAISE', self.stack[self.currentPlayer])
-                    raise Exception('Raise must be larger than previous bet or raise')
-            
+                    else:
+                        raise Exception('Raise must be larger than previous bet or raise')
+                if action[1] > self.stack[1 - self.currentPlayer]:
+                    raise Exception('Cannot raise more than what opponent is able to call')           
+
             deficit = abs(self.pot[0]-self.pot[1])
             contribAmt = deficit + action[1]
 
@@ -151,6 +155,7 @@ class bloodRiver(Game):
             self.stack[self.currentPlayer] -= action[1]
             self.pot[self.currentPlayer] += action[1]
             self.history.append(('BET', action[1]))
+            self.currentPlayer = 1-self.currentPlayer
         
         if self.firstMove: self.firstMove = False
 
@@ -176,9 +181,10 @@ game.makeMove(('BET', 200))
 game.infoSet()
 game.makeMove(('CALL', -1))
 game.infoSet()
-game.makeMove(('CHECK', -1))
+game.makeMove(('BET', 70))
+game.infoSet()
+game.makeMove(('RAISE', 71))
 game.infoSet()
 game.makeMove(('FOLD', -1))
-game.infoSet()
 print(game.getPayout())
 
