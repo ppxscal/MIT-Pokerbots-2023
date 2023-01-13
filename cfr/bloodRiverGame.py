@@ -14,9 +14,7 @@ class bloodRiver(Game):
         self.dealer = 0
         self.winner = -1
         self.isTerminal = False
-        self.player0Cards = self.deck.deal(2)
-        self.player1Cards = self.deck.deal(2)
-        self.cards = [self.player0Cards, self.player1Cards]
+        self.cards = [self.deck.deal(2), self.deck.deal(2)]
         self.board = self.deck.deal(5)
         self.street = 0
         self.firstMove = True
