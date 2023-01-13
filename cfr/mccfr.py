@@ -9,7 +9,8 @@ class bloodyStream:
     def __init__(self):
         self.strategy = {}
 
-    def regretMatch(self):
+    def regretMatch(self, regrets):
+        '''Takes the regrets as input and outputs the strategy'''
         pass
 
     def mccfr(self, gameState=bloodRiverGame.Game(), π_i={}, i=0, t=0):

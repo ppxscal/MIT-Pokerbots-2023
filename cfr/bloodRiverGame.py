@@ -1,6 +1,7 @@
 from game import Game
 import eval7
 from types import MappingProxyType
+import numpy as np
 
 class bloodRiver(Game):
     
@@ -8,8 +9,8 @@ class bloodRiver(Game):
         self.deck = eval7.Deck()
         self.deck.shuffle()
         self.history = []
-        self.stack = [400,400]
-        self.pot = [0,0]
+        self.stack = np.array([400,400])
+        self.pot = np.array([0,0])
         self.currentPlayer = 0
         self.dealer = 0
         self.winner = -1
@@ -18,6 +19,15 @@ class bloodRiver(Game):
         self.board = self.deck.deal(5)
         self.street = 0
         self.firstMove = True
+        #We define the action strategy/regret indices as follows:
+        #['FOLD', 'CALL', 'RAISE', 'CHECK', 'BET']
+        #[ 0,      1,      2,       3,       4]
+
+        self.regretSum = np.zeros(5)
+        self.strategySum = np.zeros(5)
+        self.strategy = np.zeros(5)
+
+    def get_strategy(self, )
     
     def beginGame(self, dealer):
         '''Start the game'''
