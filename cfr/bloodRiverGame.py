@@ -19,29 +19,7 @@ class bloodRiver(Game):
         self.board = self.deck.deal(5)
         self.street = 0
         self.firstMove = True
-        #We define the action strategy/regret indices as follows:
-        #['FOLD', 'CALL', 'RAISE', 'CHECK', 'BET']
-        #[ 0,      1,      2,       3,       4]
 
-        self.regretSum = np.zeros(5)
-        self.strategySum = np.zeros(5)
-        self.strategy = np.zeros(5)
-
-    def get_strategy(self, ):
-        '''Returns the strategy for the current player via regret matching'''
-        normalizingSum = 0
-        for i in range(len(self.regretSum)):
-            self.strategy[i] = self.regretSum[i] if self.regretSum[i] > 0 else 0
-            normalizingSum += self.strategy[i]
-
-        if normalizingSum > 0: 
-            for i in range(len(self.strategy)): 
-                self.strategy[i] = self.strategy[i]/normalizingSum
-        else: self.strategy = np.full((1,len(self.strategy)), 1/len(self.strategy))
-
-        self.strategySum += self.strategy
-
-        return self.strategy
     
     def beginGame(self, dealer):
         '''Start the game'''

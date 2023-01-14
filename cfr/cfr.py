@@ -1,4 +1,4 @@
-import bloodRiverGame
+from bloodRiverGame import bloodRiver
 import numpy as np
 from copy import deepcopy
 
@@ -6,61 +6,107 @@ from copy import deepcopy
 class bloodyStream:
 
     def __init__(self):
+        #access via dic[infoset][action]
+        #We define the action strategy/regret indices as follows:
+        #['FOLD', 'CALL', 'RAISE', 'CHECK', 'BET']
+        #[ 0,      1,      2,       3,       4]
+        self.regretSum = {}
+        self.strategySum = {}
         self.strategy = {}
-        self.nodeMap = {}
 
 
-    def createNode(self,):
-        '''Creates a node for the infoset if it doesn't exist'''
-        
+    def get_strategy(self, infoset, action):
+        '''Returns the strategy for the current player via regret matching'''
+
+        normalizingSum = 0
+
+        for i in range(len(self.regretSum)):
+            self.strategy[i] = self.regretSum[i] if self.regretSum[i] > 0 else 0
+            normalizingSum += self.strategy[i]
+
+        if normalizingSum > 0: 
+            for i in range(len(self.strategy)): 
+                self.strategy[i] = self.strategy[i]/normalizingSum
+        else: self.strategy = np.full((1,len(self.strategy)), 1/len(self.strategy))
+
+        self.strategySum += self.strategy
+
+        return self.strategy
 
 
+    def lcfr(self, game, probabilities):
+        '''Linear Counterfactual Regret Minimization
+        probabilities is a vector of probabilities that the ith player will reach the current node
+        '''
 
-    def lcfr(self, infoset, π_i={}, i=0, t=0):
-        '''Linear Counterfactual Regret Minimization'''
-
-        #get the gamestate node if it exists
-        #if it doesn't exist, create it
-        gameState = None
-        if infoset in self.nodeMap: gameState = self.nodeMap[infoset]
-        else:
-            self.nodeMap[infoset] = bloodRiverGame.bloodRiver()
-            gameState = self.nodeMap[infoset]
-
-
-        #base case?
+        #base case
         if gameState.isTerminal():
             return gameState.getPayout()
         
         #we should consider the chance node case if performance is unsatisfactory
         #note that chance node outcomes can be precomputed
-        
-        I = gameState.infoSet()
+        infoset = game.infoSet()
+        actions = gameState.getActions()
+        player = infoset['player']
 
-        #σ[t][I] = regret_matching(R[t][I])
-        strategy = gameState.getStrategy()
-        
+        #create the node if it doesn't exist
+        if infoset not in self.strategySum[player]:
+            self.strategySum[player][infoset] = np.zeros(len(actions))
+            self.regretSum[player][infoset] = np.zeros(len(actions))
+
+        #get the strategy for the current player
+        strategy = game.getStrategy()
+        actionUtilities = np.zeros(shape = (len(actions), 2))
+        nodeUtilities = np.zeros(2)
           
-        #game instance should have a strategy field
-        #when the regrets are added, we should make sure that the strategy is updated
-        #this is covered in the thesis somewhere
+        #for each action, recursively call lcfr
+        for i in range(len(actions)):
+            gameCopy = deepcopy(game)
+            gameCopy.makeMove(actions[i])
+            probabilityCopy = np.copy(probabilities)
+            probabilityCopy[player] *= strategy[i]
+            actionUtilities[i] = self.lcfr(copy, probabilityCopy)
 
-        if gameState.currentPlayer == i:
-            # traverse all available actions, to illiminate influence of σ_i
-            v[I] = {a: lcfr(h + [a], {**π_i, P(h): π_i[P(h)] * σ[t][I][a]}, i, t) 
-                                    for a in A[I]}
-        else:
-            # sample one a from A[I]
-            a = sample(A[I], σ[t][I])
-            v[I][a] = lcfr(h + [a], {**π_i, P(h): π_i[P(h)] * σ[t][I][a]})
+            for player in range(2):
+                nodeUtilities[player] += actionUtilities[actions[i], player] * strategy[action]
+
+        #from here collect the counterfactual regrets
+        for i in range(len(actions)):
+            counterfacProb = 1
+            for i in range(2):
+                if i != player: counterfacProb *= probabilities[i]
         
-        #Here, we need to compute the expected regret over the available actions
-        #regret = some function
+            #update the regrets
+            regret = actionUtilities[actions[i], player] - nodeUtilities[player]
+            self.regretSum[player][infoset][actions[i]] += counterfacProb * regret
+            self.strategySum[player][infoset][actions[i]] += counterfacProb * strategy[actions[i]]
 
-        #then for each action, add to the regret for the next iteration
-        #and then update the strategy * probability of reaching that action
-
-        return regret
+        return nodeUtilities
 
 
-    
+    def train(self, iterations):
+        '''Trains the CFR algorithm for the given number of iterations'''
+
+        for i in range(iterations):
+            game = bloodRiver()
+            game.beginGame()
+            self.lcfr(game, [1, 1])
+
+        #compute the average strategy
+        for player in range(2):
+            for infoset in self.strategySum[player]:
+                normalizingSum = 0
+                for i in range(len(self.strategySum[player][infoset])):
+                    normalizingSum += self.strategySum[player][infoset][i]
+                for i in range(len(self.strategySum[player][infoset])):
+                    if normalizingSum > 0:
+                        self.strategySum[player][infoset][i] /= normalizingSum
+                    else:
+                        self.strategySum[player][infoset][i] = 1/len(self.strategySum[player][infoset])
+
+        return self.strategySum
+
+
+if __name__ == '__main__':
+    cfr = bloodyStream()
+    cfr.train(100000)
