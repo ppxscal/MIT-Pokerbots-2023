@@ -28,7 +28,7 @@ class bloodRiver(Game):
         self.strategy = np.zeros(5)
 
     def get_strategy(self, ):
-        '''Returns the strategy for the current player'''
+        '''Returns the strategy for the current player via regret matching'''
         normalizingSum = 0
         for i in range(len(self.regretSum)):
             self.strategy[i] = self.regretSum[i] if self.regretSum[i] > 0 else 0
@@ -39,12 +39,9 @@ class bloodRiver(Game):
                 self.strategy[i] = self.strategy[i]/normalizingSum
         else: self.strategy = np.full((1,len(self.strategy)), 1/len(self.strategy))
 
-        #self.strategySum += self.strategy
-        #mccfr calls for a different way ofupdating the strategy
-        #http://mlanctot.info/files/papers/PhD_Thesis_MarcLanctot.pdf 
-        
-        return self.strategy
+        self.strategySum += self.strategy
 
+        return self.strategy
     
     def beginGame(self, dealer):
         '''Start the game'''
