@@ -1,7 +1,16 @@
 from game import Game
 import eval7
-from types import MappingProxyType
 import numpy as np
+from copy import deepcopy
+
+class hashabledict(dict):
+    
+  def __key(self):
+    return tuple((k,self[k]) for k in sorted(self))
+  def __hash__(self):
+    return hash(self.__key())
+  def __eq__(self, other):
+    return self.__key() == other.__key()
 
 class bloodRiver(Game):
     
@@ -31,21 +40,30 @@ class bloodRiver(Game):
         self.pot[1-self.dealer] += 2
         self.history.append(('BLIND', -1))
         self.street +=1
+    
+    def copy(self):
+        '''Returns a copy of the game'''
+        self.cards = [map(lambda x: str(x), self.cards[0]), map(lambda x: str(x), self.cards[1])]
+        newGame = deepcopy(self)
+        self.cards = [map(lambda x: eval7.Card(x), self.cards[0]), map(lambda x: eval7.Card(x), self.cards[1])]
+        
+        return newGame
 
     def infoSet(self):
         '''Returns the information set hash for the current player. It is all the availble information for that player'''
 
-        infoset = MappingProxyType({'player' : self.currentPlayer, 
+        infoset = hashabledict({'player' : self.currentPlayer, 
                 'dealer' : self.dealer,
-                'history' : self.history, 
-                'cards' : self.cards[self.currentPlayer],
+                'history' : tuple(self.history), 
+                'cards' : tuple(self.cards[self.currentPlayer]),
+                'cards': tuple(str(card) for card in self.cards[self.currentPlayer]),
                 'actions' : self.getActions(),
                 'street': self.street,
                 'terminal': self.isTerminal,
-                'pot': self.pot,
-                'stack': self.stack,}
+                'pot': tuple(self.pot),
+                'stack': tuple(self.stack)}
                 )
-        print(infoset, '\n')
+        #print(infoset, '\n')
         return infoset
         
     def getActions(self):
@@ -166,25 +184,25 @@ class bloodRiver(Game):
         return sum(self.pot)
 
 
-game = bloodRiver()
-game.beginGame(0)
-game.infoSet()
-game.makeMove(('CALL', -1))
-game.infoSet()
-game.makeMove(('CHECK', -1))
-game.infoSet()
-game.makeMove(('CHECK', -1))
-game.infoSet()
-game.makeMove(('CHECK', -1))
-game.infoSet()
-game.makeMove(('BET', 200))
-game.infoSet()
-game.makeMove(('CALL', -1))
-game.infoSet()
-game.makeMove(('BET', 70))
-game.infoSet()
-game.makeMove(('RAISE', 71))
-game.infoSet()
-game.makeMove(('FOLD', -1))
-print(game.getPayout())
+# game = bloodRiver()
+# game.beginGame(0)
+# game.infoSet()
+# game.makeMove(('CALL', -1))
+# game.infoSet()
+# game.makeMove(('CHECK', -1))
+# game.infoSet()
+# game.makeMove(('CHECK', -1))
+# game.infoSet()
+# game.makeMove(('CHECK', -1))
+# game.infoSet()
+# game.makeMove(('BET', 200))
+# game.infoSet()
+# game.makeMove(('CALL', -1))
+# game.infoSet()
+# game.makeMove(('BET', 70))
+# game.infoSet()
+# game.makeMove(('RAISE', 71))
+# game.infoSet()
+# game.makeMove(('FOLD', -1))
+# print(game.getPayout())
 

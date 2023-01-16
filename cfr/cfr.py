@@ -1,6 +1,7 @@
 from bloodRiverGame import bloodRiver
 import numpy as np
 from copy import deepcopy
+from bloodRiverGame import hashabledict
 
 
 class bloodyStream:
@@ -10,26 +11,27 @@ class bloodyStream:
         #We define the action strategy/regret indices as follows:
         #['FOLD', 'CALL', 'RAISE', 'CHECK', 'BET']
         #[ 0,      1,      2,       3,       4]
-        self.regretSum = {}
-        self.strategySum = {}
-        self.strategy = {}
+        self.regretSum = {0: {}, 1: {}}
+        self.strategySum = {0: {}, 1: {}}
+        self.strategy = {0: {}, 1: {}}
+    
 
-
-    def get_strategy(self, infoset, action):
+    def getStrategy(self, infohash, currentPlayer):
         '''Returns the strategy for the current player via regret matching'''
 
         normalizingSum = 0
+        print(self.regretSum, 'hiiiiiiiiiiiiiii')
 
-        for i in range(len(self.regretSum)):
-            self.strategy[i] = self.regretSum[i] if self.regretSum[i] > 0 else 0
-            normalizingSum += self.strategy[i]
+        for i in range(5):
+            self.strategy[currentPlayer][infohash] = self.regretSum[currentPlayer][infohash] if sum(self.regretSum[currentPlayer][infohash]) > 0 else 0
+            normalizingSum += self.strategy[currentPlayer][infohash]
 
         if normalizingSum > 0: 
-            for i in range(len(self.strategy)): 
-                self.strategy[i] = self.strategy[i]/normalizingSum
-        else: self.strategy = np.full((1,len(self.strategy)), 1/len(self.strategy))
+            for i in range(5): 
+                self.strategy[currentPlayer][infohash] = self.strategy[currentPlayer][infohash]/normalizingSum
+        else: self.strategy[currentPlayer][infohash] = np.array([0.2, 0.2, 0.2, 0.2, 0.2])
 
-        self.strategySum += self.strategy
+        self.strategySum[currentPlayer][infohash] += self.strategy[currentPlayer][infohash]
 
         return self.strategy
 
@@ -40,28 +42,29 @@ class bloodyStream:
         '''
 
         #base case
-        if gameState.isTerminal():
-            return gameState.getPayout()
+        if game.isTerminal:
+            return game.getPayout()
         
         #we should consider the chance node case if performance is unsatisfactory
         #note that chance node outcomes can be precomputed
         infoset = game.infoSet()
-        actions = gameState.getActions()
+        infohash = hash(infoset)
+        actions = game.getActions()
         player = infoset['player']
 
         #create the node if it doesn't exist
-        if infoset not in self.strategySum[player]:
-            self.strategySum[player][infoset] = np.zeros(len(actions))
-            self.regretSum[player][infoset] = np.zeros(len(actions))
+        if infohash not in self.strategySum.get(player, {}):
+            self.strategySum[player][infohash] = np.zeros(5)
+            self.regretSum[player][infohash] = np.zeros(5)
 
         #get the strategy for the current player
-        strategy = game.getStrategy()
-        actionUtilities = np.zeros(shape = (len(actions), 2))
+        strategy = self.getStrategy(infohash, player)
+        actionUtilities = np.zeros(shape = (5, 2))
         nodeUtilities = np.zeros(2)
           
         #for each action, recursively call lcfr
-        for i in range(len(actions)):
-            gameCopy = deepcopy(game)
+        for i in range(5):
+            gameCopy = game.copy()
             gameCopy.makeMove(actions[i])
             probabilityCopy = np.copy(probabilities)
             probabilityCopy[player] *= strategy[i]
@@ -71,7 +74,7 @@ class bloodyStream:
                 nodeUtilities[player] += actionUtilities[actions[i], player] * strategy[action]
 
         #from here collect the counterfactual regrets
-        for i in range(len(actions)):
+        for i in range(5):
             counterfacProb = 1
             for i in range(2):
                 if i != player: counterfacProb *= probabilities[i]
@@ -89,7 +92,7 @@ class bloodyStream:
 
         for i in range(iterations):
             game = bloodRiver()
-            game.beginGame()
+            game.beginGame(i%2)
             self.lcfr(game, [1, 1])
 
         #compute the average strategy
@@ -108,5 +111,5 @@ class bloodyStream:
 
 
 if __name__ == '__main__':
-    cfr = bloodyStream()
-    cfr.train(100000)
+    trainer = bloodyStream()
+    trainer.train(100000)
