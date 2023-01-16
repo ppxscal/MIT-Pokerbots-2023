@@ -24,8 +24,7 @@ class bloodRiver(Game):
         self.dealer = 0
         self.winner = -1
         self.isTerminal = False
-        self.cards = [self.deck.deal(2), self.deck.deal(2)]
-        self.board = self.deck.deal(5)
+        
         self.street = 0
         self.firstMove = True
 
@@ -43,10 +42,24 @@ class bloodRiver(Game):
     
     def copy(self):
         '''Returns a copy of the game'''
-        self.cards = [map(lambda x: str(x), self.cards[0]), map(lambda x: str(x), self.cards[1])]
-        newGame = deepcopy(self)
-        self.cards = [map(lambda x: eval7.Card(x), self.cards[0]), map(lambda x: eval7.Card(x), self.cards[1])]
-        
+        gameCopy = bloodRiver()
+        print(vars(gameCopy), 'yoooooooooooooooo')
+
+        attributes = vars(gameCopy)
+        eval7Copy = lambda item: [eval7.Card(str(card)) for card in item]
+
+        for attr in attributes:
+            item = attributes[attr]
+            if type(item) == Deck:
+                gameCopy.deck.cards = [eval7.Card(str(card)) for card in self.deck.cards]
+            elif type(item) == np.ndarray:
+                gameCopy.attr = np.copy(item)
+            elif type(item) in {list, tuple}:
+                gameCopy.attr = deepcopy(item)
+                
+            
+
+
         return newGame
 
     def infoSet(self):
