@@ -24,7 +24,8 @@ class bloodRiver(Game):
         self.dealer = 0
         self.winner = -1
         self.isTerminal = False
-        
+        self.cards = [self.deck.deal(2), self.deck.deal(2)]
+        self.board = self.deck.deal(5)
         self.street = 0
         self.firstMove = True
 
@@ -39,28 +40,6 @@ class bloodRiver(Game):
         self.pot[1-self.dealer] += 2
         self.history.append(('BLIND', -1))
         self.street +=1
-    
-    def copy(self):
-        '''Returns a copy of the game'''
-        gameCopy = bloodRiver()
-        print(vars(gameCopy), 'yoooooooooooooooo')
-
-        attributes = vars(gameCopy)
-        eval7Copy = lambda item: [eval7.Card(str(card)) for card in item]
-
-        for attr in attributes:
-            item = attributes[attr]
-            if type(item) == Deck:
-                gameCopy.deck.cards = [eval7.Card(str(card)) for card in self.deck.cards]
-            elif type(item) == np.ndarray:
-                gameCopy.attr = np.copy(item)
-            elif type(item) in {list, tuple}:
-                gameCopy.attr = deepcopy(item)
-                
-            
-
-
-        return newGame
 
     def infoSet(self):
         '''Returns the information set hash for the current player. It is all the availble information for that player'''
@@ -124,17 +103,17 @@ class bloodRiver(Game):
         
         actions = self.getActions()
 
-        if action[0] not in actions:
+        if action not in actions:
             raise Exception('Invalid action', action, actions)
         
-        print('Making move: ', action, '\n')
+        print('Making move: ', action)
 
-        if action[0] == 'FOLD':
+        if action == 'FOLD':
             self.isTerminal = True
             self.winner = 1-self.currentPlayer
             self.history.append(('FOLD', -1))
         
-        elif action[0] == 'CHECK':
+        elif action == 'CHECK':
             self.currentPlayer = 1-self.currentPlayer     
             if self.history[-1][0] == 'CHECK' and not self.firstMove:
                 self.firstMove = True
@@ -143,7 +122,7 @@ class bloodRiver(Game):
                 return
             self.history.append(('CHECK', -1))
         
-        elif action[0] == 'CALL':
+        elif action == 'CALL':
             callValue = abs(self.pot[0]-self.pot[1])
             self.stack[self.currentPlayer] -= callValue
             self.pot[self.currentPlayer] += callValue
@@ -154,38 +133,38 @@ class bloodRiver(Game):
             self.history.append(('CALL', -1))
             return
         
-        elif action[0] == 'RAISE':
+        elif action == 'RAISE':
             if self.history[-1][0] != 'BET' and self.history[-1][0] != 'RAISE':
                 raise Exception('Not allowed to Raise')
 
             #if responding to a bet or raise
             if self.history[-1][0] in {'BET', 'RAISE'}:
-                if action[1] <= self.history[-1][1]:
+                if action <= self.history[-1][1]:
                     if self.history[-1][1] > self.stack[self.currentPlayer]:
                         print('The only raise should be all in')
                         action = ('RAISE', self.stack[self.currentPlayer])
                     else:
                         raise Exception('Raise must be larger than previous bet or raise')
-                if action[1] > self.stack[1 - self.currentPlayer]:
+                if action > self.stack[1 - self.currentPlayer]:
                     raise Exception('Cannot raise more than what opponent is able to call')           
 
             deficit = abs(self.pot[0]-self.pot[1])
-            contribAmt = deficit + action[1]
+            contribAmt = deficit + action
 
             self.stack[self.currentPlayer] -= contribAmt
             self.pot[self.currentPlayer] += contribAmt
             self.currentPlayer = 1-self.currentPlayer
-            self.history.append(('RAISE ', action[1]))
+            self.history.append(('RAISE ', action))
             return
         
-        elif action[0] == 'BET':
-            if action[1] < 2:
-                raise Exception('Minimum bet is 2')
-            if action[1] > max(self.stack):
-                raise Exception('Cannot bet more than stack')
-            self.stack[self.currentPlayer] -= action[1]
-            self.pot[self.currentPlayer] += action[1]
-            self.history.append(('BET', action[1]))
+        elif action == 'BET':
+            # if action < 2:
+            #     raise Exception('Minimum bet is 2')
+            # if action > max(self.stack):
+            #     raise Exception('Cannot bet more than stack')
+            self.stack[self.currentPlayer] -= 50
+            self.pot[self.currentPlayer] += 100
+            self.history.append(('BET', action))
             self.currentPlayer = 1-self.currentPlayer
         
         if self.firstMove: self.firstMove = False
