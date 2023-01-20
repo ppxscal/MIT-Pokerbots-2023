@@ -54,23 +54,14 @@ class bucketer:
         for _ in range(iterations):
             deck.shuffle()
 
-            _COMM = 5
+            _COMM = 6
             _OPP = 2
 
             draw = deck.peek(_COMM + _OPP)
 
             opp_hole = draw[:_OPP]
             community = draw[_OPP:]
-
-            rivCard = str(community[-1])[1]
-            bloodyRound = (
-                False
-                if reduce(lambda x, y: x or (rivCard in {"h", "d"}), community)
-                else True
-            )
-
-            if bloodyRound:
-                community += deck.peek(1)
+            numBloody = 0
 
             our_hand = eval7Cards + community
             opp_hand = opp_hole + community
@@ -93,27 +84,15 @@ class bucketer:
 
         return hand_strength
 
-    def equiyDist(self, hole, epochs):
+    def equiyDist(self, hand, epochs):
         """returns the equiy distribution of a given hand for some epocs"""
 
         vals = np.array([])
 
         for i in range(epochs):
-            vals = np.append(vals, self.calc_strength(hole, 100))
+            vals = np.append(vals, self.calc_strength(hand, 50))
 
-        plt.hist(vals, bins=len(vals))
-        plt.show()
-
-    # def preflopAbstraction(self):
-    #     """creates the preflop abstraction"""
-    #     # 169 ranges -> compute their equity distributions -> bucket them based on relative distance
-    #     if not os.path.exists("preflopRanges.pkl"):
-    #         with open("data/preflopRanges.pkl", "wb") as file:
-    #             preflop = set()
-    #             for i in range(len(self.ranks)):
-    #                 for j in range(len(self.suits)):
-    #                     preflop.add(self.ranks[i] + self.suits[j])
-    #             pickle.dump(preflop, file)
+        return vals
 
     def postFlopAbstraction(self):
         """creates the postflop abstraction 7 card hands
@@ -163,10 +142,12 @@ class bucketer:
                 if 'h' in suitCounter or 'd' in suitCounter: return "monotoneRed"
                 else: return "monotoneBlack"
         
-        def allBoards():
-            """returns all possible boards as a generator""" 
+        def allBoards(hole):
+            """returns all possible boards as a generator"""
+            newDeck = set(self.cards)
+            newDeck = newDeck - hole
             seen = set()
-            for board in combinations(self.cards, 3):
+            for board in combinations(newDeck, 3):
                 board = tuple(sorted(list(board)))
                 if board not in seen:
                     yield board
@@ -178,20 +159,31 @@ class bucketer:
             use emd to create points in 4d space against flopLookups
             100 k-means clusters which are the buckets
             '''
+            equities = {}
+            preflops = set()
+
+            for cards in combinations(self.cards, 2):
+                preflops.add(tuple(sorted(cards)))
             
-            if not os.path.exists("data/flopLookup.pkl"):
-                with open("data/flopLookup.pkl", "wb") as file:
-                    flopLookup = {}
-                    distr = {'paired': 0, 'rainbowDisc': 0, 'rainbowConec': 0, 'twoToneDisc': 0, 'twoToneConec': 0, 'monotoneBlack': 0, 'monotoneRed': 0}
-                    flops = allBoards()
-                    with alive_bar() as bar:
-                        for board in allBoards():
-                            flopLookup[board] = getTexture(board)
-                            distr[flopLookup[board]] += 1
-                            bar()
-                    print(distr)
-                    pickle.dump(flopLookup, file)
+            for preflop in preflops:
+                hole ={card for card in preflop}
+                equities[preflop] = {}
+                for board in allBoards(hole):
+                    hand = [Card(str(card)) for card in preflop+board]
+                    distribution = self.equiyDist(hand, 100)
+                    equities[preflop][board] = distribution
+                    plt.hist(equities[preflop][board], bins=100)
+                    plt.show()
+                    break
+                break
+                
             
+            # with alive_bar() as bar:
+            #     for preflop in preflops:
+            #         equities[preflop] = {}
+
+        flopAbstractor()
+                     
         def preflopDistribututions():
             
             with open("data/flopLookup.pkl", "rb") as file:
@@ -205,13 +197,12 @@ class bucketer:
             '''
             pass
             
+        # flopAbstractor()
+        
 
 
 
 if __name__ == "__main__":
-    # hole = input('Enter hand: ')
-    # hole = hole.split(',')
-    # iterations = int(input('Enter iterations: '))
-    # hole = [Card(hole[0]), Card(hole[1])]
     calcObj = bucketer()
     calcObj.postFlopAbstraction()
+    
